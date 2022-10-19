@@ -54,6 +54,13 @@ void _ops_exit(OPS_instance *instance) {
 
 void ops_exit() { ops_exit_core(OPS_instance::getOPSInstance()); }
 
+void ops_set_soa(const int soa_val) {
+  ops_set_soa_core(OPS_instance::getOPSInstance(), soa_val);
+}
+
+void _ops_set_soa(OPS_instance *instance, const int soa_val) {
+  ops_set_soa_core(instance, soa_val);
+}
 
 /**
  * Make a new dat identical to orig_dat and enqueue a kernel to do the 

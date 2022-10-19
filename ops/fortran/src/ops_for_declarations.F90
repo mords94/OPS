@@ -211,6 +211,11 @@ module OPS_Fortran_Declarations
       use, intrinsic :: ISO_C_BINDING
     end subroutine ops_exit_c
 
+    subroutine ops_set_soa_c ( soa_val ) BIND(C,name='ops_set_soa')
+        use, intrinsic :: ISO_C_BINDING
+        integer(kind=c_int), intent(in), value :: soa_val
+    end subroutine ops_set_soa_c
+
     type(c_ptr) function ops_decl_block_c ( dims, name ) BIND(C,name='ops_decl_block')
 
       use, intrinsic :: ISO_C_BINDING
@@ -502,7 +507,7 @@ module OPS_Fortran_Declarations
   !##################################################################
 
   interface ops_decl_dat
-    module procedure ops_decl_dat_real_8, ops_decl_dat_integer_4, ops_decl_dat_real_8_2, ops_decl_dat_real_8_3
+    module procedure ops_decl_dat_real_8, ops_decl_dat_integer_4, ops_decl_dat_real_8_2, ops_decl_dat_real_8_3, ops_decl_dat_real_8_4
   end interface ops_decl_dat
 
   interface ops_reduction_result
@@ -555,6 +560,12 @@ module OPS_Fortran_Declarations
   subroutine ops_exit ( )
     call ops_exit_c (  )
   end subroutine ops_exit
+
+    subroutine ops_set_soa ( soa_val )
+        integer(4) :: soa_val
+        call ops_set_soa_c (soa_val)
+    end subroutine ops_set_soa
+
 
   subroutine ops_decl_block ( dims, block, name )
 
@@ -690,6 +701,37 @@ module OPS_Fortran_Declarations
     call c_f_pointer ( dat%dataCptr, dat%dataPtr )
 
   end subroutine ops_decl_dat_real_8_3
+
+  subroutine ops_decl_dat_real_8_4 ( block, dim, size, base, d_m, d_p, data, dat, typ, name )
+
+    type(ops_block), intent(in)                  :: block
+    integer, intent(in)                          :: dim
+    integer(4), dimension(*), intent(in), target :: size
+    integer(4), dimension(*),             target :: base
+    integer(4), dimension(*), intent(in), target :: d_m
+    integer(4), dimension(*), intent(in), target :: d_p
+    real(8), dimension(:,:,:,:), intent(in), target  :: data
+    type(ops_dat)                                :: dat
+    character(kind=c_char,len=*)                 :: name
+    character(kind=c_char,len=*)                 :: typ
+    integer(4), dimension(5), target :: stride
+
+    integer d;
+    DO d = 1, block%blockPtr%dims
+      base(d) = base(d)-1
+      stride(d) = 1
+    end DO
+
+    dat%dataCPtr = ops_decl_dat_c ( block%blockCptr, dim, c_loc(size), c_loc(base), c_loc(d_m), c_loc(d_p), c_loc(stride), c_loc ( data ), 8, typ//C_NULL_CHAR, name//C_NULL_CHAR )
+
+    DO d = 1, block%blockPtr%dims
+      base(d) = base(d)+1
+    end DO
+
+    ! convert the generated C pointer to Fortran pointer and store it inside the ops_dat variable
+    call c_f_pointer ( dat%dataCptr, dat%dataPtr )
+
+  end subroutine ops_decl_dat_real_8_4  
 
   subroutine ops_decl_dat_integer_4 ( block, dim, size, base, d_m, d_p, data, dat, typ, name )
 

@@ -170,7 +170,7 @@ void ops_init_core(OPS_instance *instance, const int argc, const char *const arg
 void ops_exit_lazy(OPS_instance *instance);
 void ops_exit_core(OPS_instance *instance);
 
-
+void ops_set_soa_core(OPS_instance *instance, const int soa_val);
 
 
 ops_dat ops_decl_dat_core(ops_block block, int data_size, int *block_size,
@@ -314,6 +314,8 @@ int _ops_is_root(OPS_instance *instance);
 void _ops_partition(OPS_instance *instance, const char *routine);
 void _ops_partition(OPS_instance *instance, const char *routine, std::map<std::string, void*>& opts);
 void _ops_exit(OPS_instance *instance);
+
+void _ops_set_soa(OPS_instance *instance, const int soa_val);
 
 void ops_printf2(OPS_instance *instance, const char *format, ...);
 void printf2(OPS_instance *instance, const char *format, ...);
