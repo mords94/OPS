@@ -13,7 +13,7 @@ endif
 	rm -f .generated
 	touch .generated
 
-TARGETS	= $(APP)_seq $(APP)_openmp $(APP)_mpi $(APP)_mpi_openmp
+TARGETS	= $(APP)_seq $(APP)_openmp
 ifeq ($(OPS_COMPILER),pgi)
 	TARGETS       += $(APP)_cuda $(APP)_mpi_cuda $(APP)_openacc $(APP)_mpi_openacc
 endif
@@ -21,23 +21,25 @@ ifeq ($(OPS_COMPILER),xlp8)
 	TARGETS       += $(APP)_cuda poisson_mpi_cuda
 endif
 
+TARGETS += $(APP)_mpi $(APP)_mpi_openmp
+
 all: $(TARGETS)
 
 cleanfiles:
 	rm -f *.o *.mod
 
 $(APP)_seq: .generated $(OPS_FILES_GEN) Makefile cleanfiles
-	$(MPIF90) $(FFLAGS) $(FMODS) $(FLINK) $(OTHER_FILES) MPI/*_seq_kernel.F90 $(OPS_GENERATED) \
+	$(MPIF90) $(FFLAGS) $(APP_FLAGS) $(FMODS) $(FLINK) $(OTHER_FILES) MPI/*_seq_kernel.F90 $(OPS_GENERATED) \
     -o $(APP)_seq $(APP_LIBS) -lops_for_seq $(F_HDF5_LIB_SEQ)
 
 $(APP)_openmp:  .generated $(OPS_FILES_GEN) Makefile cleanfiles
-	$(FC) $(FFLAGS) $(FMODS) $(FLINK) $(OMPFLAGS) $(OTHER_FILES) MPI_OpenMP/*_omp_kernel.F90  $(OPS_GENERATED) \
-        -o $(APP)_openmp -lops_for_seq $(F_HDF5_LIB_SEQ)
+	$(MPIF90) $(FFLAGS) $(APP_FLAGS) $(FMODS) $(FLINK) $(OMPFLAGS) $(OTHER_FILES) MPI_OpenMP/*_omp_kernel.F90  $(OPS_GENERATED) \
+        -o $(APP)_openmp $(APP_LIBS) -lops_for_seq $(F_HDF5_LIB_SEQ)
 
 $(APP)_cuda:  .generated $(OPS_FILES_GEN) Makefile cleanfiles
 ifeq ($(OPS_COMPILER),pgi)
-	$(FC) $(FFLAGS) $(FMODS_CUDA) $(FLINK) $(CUDAFOR) $(OTHER_FILES) CUDA/*_cuda_kernel.CUF $(OPS_GENERATED) \
-        -o $(APP)_cuda -lops_for_cuda $(F_HDF5_LIB_SEQ)
+	$(MPIF90) $(FFLAGS) $(FMODS_CUDA) $(FLINK) $(CUDAFOR) $(OTHER_FILES) CUDA/*_cuda_kernel.CUF $(OPS_GENERATED) \
+        -o $(APP)_cuda $(APP_LIBS) -lops_for_cuda $(F_HDF5_LIB_SEQ)
 else
 	@echo "cuda cannot be built with $(OPS_COMPILER) compilers .. requires a CUDA FORTRAN compiler (e.g. pgi)"
 endif

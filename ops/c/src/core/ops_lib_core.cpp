@@ -337,10 +337,6 @@ void ops_exit_core(OPS_instance *instance) {
   instance->is_initialised = 0;
 }
 
-void ops_set_soa_core(OPS_instance *instance, const int soa_val) {
-  instance->OPS_soa = soa_val;
-}
-
 ops_block _ops_decl_block(OPS_instance *instance, int dims, const char *name) {
   if (dims <= 0) {
       OPSException ex(OPS_INVALID_ARGUMENT);
