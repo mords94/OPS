@@ -45,55 +45,25 @@ double dx,dy;
 
 // OPS header file
 #define OPS_2D
-#include "ops_seq_v2.h"
-#include "user_types.h"
+#include "ops_seq.h"
+
 #include "poisson_kernel.h"
 
 /******************************************************************************
 * Main program
-*******************************************************************************/
+/******************************************************************************/
 int main(int argc, char **argv)
 {
   /**-------------------------- Initialisation --------------------------**/
 
   // OPS initialisation
-  ops_init(argc,argv,1);
+  ops_init(argc,argv,6);
 
-
-  //Mesh
-  int logical_size_x = 20;
-  int logical_size_y = 20;
-  int ngrid_x = 1;
-  int ngrid_y = 1;
-  int n_iter = 10;
-  int itertile = n_iter;
-  int non_copy = 0;
-
-  const char* pch;
-  for ( int n = 1; n < argc; n++ ) {
-    pch = strstr(argv[n], "-sizex=");
-    if(pch != NULL) {
-      logical_size_x = atoi ( argv[n] + 7 ); continue;
-    }
-    pch = strstr(argv[n], "-sizey=");
-    if(pch != NULL) {
-      logical_size_y = atoi ( argv[n] + 7 ); continue;
-    }
-    pch = strstr(argv[n], "-iters=");
-    if(pch != NULL) {
-      n_iter = atoi ( argv[n] + 7 ); continue;
-    }
-    pch = strstr(argv[n], "-itert=");
-    if(pch != NULL) {
-      itertile = atoi ( argv[n] + 7 ); continue;
-    }
-    pch = strstr(argv[n], "-non-copy");
-    if(pch != NULL) {
-      non_copy = 1; continue;
-    }
-  }
-
-  ops_printf("Grid: %dx%d in %dx%d blocks, %d iterations, %d tile height\n",logical_size_x,logical_size_y,ngrid_x,ngrid_y,n_iter,itertile);
+  int logical_size_x = 10; //200
+  int logical_size_y = 10; //200
+  int ngrid_x = 2;
+  int ngrid_y = 2;
+  int n_iter = 10000;
   dx = 0.01;
   dy = 0.01;
   ops_decl_const("dx",1,"double",&dx);
@@ -167,7 +137,7 @@ int main(int argc, char **argv)
     }
   }*/
 
-  ops_halo *halos = (ops_halo *)malloc(2*(ngrid_x*(ngrid_y-1)+(ngrid_x-1)*ngrid_y)*sizeof(ops_halo));
+  ops_halo *halos = (ops_halo *)malloc(2*(ngrid_x*(ngrid_y-1)+(ngrid_x-1)*ngrid_y)*sizeof(ops_halo *));
   int off = 0;
   for (int j = 0; j < ngrid_y; j++) {
     for (int i = 0; i < ngrid_x; i++) {
@@ -177,8 +147,14 @@ int main(int argc, char **argv)
         int base_to[] = {-1,0};
         int dir[] = {1,2};
 
+        //printf("halo_iter = %d %d %d  %d\n",i,j,halo_iter[0],halo_iter[1]);
+        //printf("base_from = %d %d %d  %d\n",i,j,base_from[0],base_from[1]);
+        //printf("base_to = %d %d %d  %d\n",i,j,base_to[0],base_to[1]);
+
         halos[off++] = ops_decl_halo(u[i-1+ngrid_x*j], u[i+ngrid_x*j], halo_iter, base_from, base_to, dir, dir);
         base_from[0] = 0; base_to[0] = sizes[2*(i+ngrid_x*j)];
+        //printf("base_from = %d %d %d  %d\n",i,j,base_from[0],base_from[1]);
+        //printf("base_to = %d %d %d  %d\n",i,j,base_to[0],base_to[1]);
         halos[off++] = ops_decl_halo(u[i+ngrid_x*j], u[i-1+ngrid_x*j], halo_iter, base_from, base_to, dir, dir);
       }
       if (j > 0) {
@@ -187,8 +163,14 @@ int main(int argc, char **argv)
         int base_to[] = {0,-1};
         int dir[] = {1,2};
 
+        //printf("halo_iter = %d %d %d  %d\n",i,j,halo_iter[0],halo_iter[1]);
+        //printf("base_from = %d %d %d  %d\n",i,j,base_from[0],base_from[1]);
+        //printf("base_to = %d %d %d  %d\n",i,j,base_to[0],base_to[1]);
+
         halos[off++] = ops_decl_halo(u[i+ngrid_x*(j-1)], u[i+ngrid_x*j], halo_iter, base_from, base_to, dir, dir);
         base_from[1] = 0; base_to[1] = sizes[2*(i+ngrid_x*j)+1];
+        //printf("base_from = %d %d %d  %d\n",i,j,base_from[0],base_from[1]);
+        //printf("base_to = %d %d %d  %d\n",i,j,base_to[0],base_to[1]);
         halos[off++] = ops_decl_halo(u[i+ngrid_x*j], u[i+ngrid_x*(j-1)], halo_iter, base_from, base_to, dir, dir);
       }
     }
@@ -197,8 +179,7 @@ int main(int argc, char **argv)
   ops_halo_group u_halos = ops_decl_halo_group(off,halos);
 
   ops_partition("");
-  ops_checkpointing_init("check.h5", 5.0, 0);
-	ops_diagnostic_output();
+  ops_checkpointing_init("check.h5", 5.0);
   /**-------------------------- Computations --------------------------**/
 
 
@@ -220,12 +201,6 @@ int main(int argc, char **argv)
                ops_arg_dat(u[i+ngrid_x*j], 1, S2D_00, "double", OPS_WRITE),
                ops_arg_dat(f[i+ngrid_x*j], 1, S2D_00, "double", OPS_WRITE),
                ops_arg_dat(ref[i+ngrid_x*j], 1, S2D_00, "double", OPS_WRITE));
-
-			ops_par_loop(poisson_kernel_update, "poisson_kernel_update", blocks[i+ngrid_x*j], 2, iter_range,
-							ops_arg_dat(u[i+ngrid_x*j], 1, S2D_00, "double", OPS_READ),
-							ops_arg_dat(u2[i+ngrid_x*j] , 1, S2D_00, "double", OPS_WRITE));
-
-
     }
   }
 
@@ -242,50 +217,34 @@ int main(int argc, char **argv)
     }
   }
 
-  double it0, it1;
-  ops_timers(&ct0, &it0);
-
   for (int iter = 0; iter < n_iter; iter++) {
-    if (ngrid_x>1 || ngrid_y>1) ops_halo_transfer(u_halos);
-    if (iter%itertile == 0) ops_execute(blocks[0]->instance);
-
-
+    ops_halo_transfer(u_halos);
     for (int j = 0; j < ngrid_y; j++) {
       for (int i = 0; i < ngrid_x; i++) {
         int iter_range[] = {0,sizes[2*(i+ngrid_x*j)],0,sizes[2*(i+ngrid_x*j)+1]};
         ops_par_loop(poisson_kernel_stencil, "poisson_kernel_stencil", blocks[i+ngrid_x*j], 2, iter_range,
                  ops_arg_dat(u[i+ngrid_x*j], 1, S2D_00_P10_M10_0P1_0M1, "double", OPS_READ),
+                 ops_arg_dat(f[i+ngrid_x*j], 1, S2D_00, "double", OPS_READ),
                  ops_arg_dat(u2[i+ngrid_x*j], 1, S2D_00, "double", OPS_WRITE));
       }
     }
 
-		if (non_copy) {
-			for (int j = 0; j < ngrid_y; j++) {
-				for (int i = 0; i < ngrid_x; i++) {
-					int iter_range[] = {0,sizes[2*(i+ngrid_x*j)],0,sizes[2*(i+ngrid_x*j)+1]};
-					ops_par_loop(poisson_kernel_stencil, "poisson_kernel_stencil", blocks[i+ngrid_x*j], 2, iter_range,
-							ops_arg_dat(u2[i+ngrid_x*j], 1, S2D_00_P10_M10_0P1_0M1, "double", OPS_READ),
-							ops_arg_dat(u[i+ngrid_x*j], 1, S2D_00, "double", OPS_WRITE));
-				}
-			}
-		} else {
-			for (int j = 0; j < ngrid_y; j++) {
-				for (int i = 0; i < ngrid_x; i++) {
-					int iter_range[] = {0,sizes[2*(i+ngrid_x*j)],0,sizes[2*(i+ngrid_x*j)+1]};
-					ops_par_loop(poisson_kernel_update, "poisson_kernel_update", blocks[i+ngrid_x*j], 2, iter_range,
-							ops_arg_dat(u2[i+ngrid_x*j], 1, S2D_00, "double", OPS_READ),
-							ops_arg_dat(u[i+ngrid_x*j] , 1, S2D_00, "double", OPS_WRITE));
-				}
-			}
-		}
-//    if (iter == 5) u[0] = ops_dat_copy(u[0]); //TESTING
-  }
-	ops_execute(blocks[0]->instance);
-  ops_timers(&ct0, &it1);
 
-  //ops_print_dat_to_txtfile(u[0], "poisson.dat");
-  //ops_print_dat_to_txtfile(ref[0], "poisson.dat");
-  //exit(0);
+
+    for (int j = 0; j < ngrid_y; j++) {
+      for (int i = 0; i < ngrid_x; i++) {
+        int iter_range[] = {0,sizes[2*(i+ngrid_x*j)],0,sizes[2*(i+ngrid_x*j)+1]};
+        ops_par_loop(poisson_kernel_update, "poisson_kernel_update", blocks[i+ngrid_x*j], 2, iter_range,
+                 ops_arg_dat(u2[i+ngrid_x*j], 1, S2D_00, "double", OPS_READ),
+                 ops_arg_dat(u[i+ngrid_x*j] , 1, S2D_00, "double", OPS_WRITE));
+      }
+    }
+
+    ops_print_dat_to_txtfile(u[0], "poisson.dat");
+    ops_print_dat_to_txtfile(u[1], "poisson.dat");
+    exit(0);
+
+  }
 
   double err = 0.0;
   for (int j = 0; j < ngrid_y; j++) {
@@ -299,36 +258,12 @@ int main(int argc, char **argv)
   }
 
   ops_reduction_result(red_err,&err);
+  ops_printf("Total error: %g\n",err);
 
   ops_timers(&ct1, &et1);
-  ops_timing_output(std::cout);
+  ops_timing_output(stdout);
+
   ops_printf("\nTotal Wall time %lf\n",et1-et0);
-  double err_diff=fabs((100.0*(err/20.727007094619303))-100.0);
-  ops_printf("Total error: %3.15g\n",err);
-  ops_printf("Total error is within %3.15E %% of the expected error\n",err_diff);
-
-  if(err_diff < 0.001) {
-    ops_printf("This run is considered PASSED\n");
-  }
-  else {
-    ops_printf("This test is considered FAILED\n");
-  }
-
-  ops_printf("%lf\n",it1-it0);
-
-
-  free(coordx);
-  free(coordy);
-  free(u);
-  free(u2);
-  free(f);
-  free(ref);
-  free(sizes);
-  free(disps);
-
-  free(blocks);
-  free(halos);
 
   ops_exit();
-  return 0;
 }
