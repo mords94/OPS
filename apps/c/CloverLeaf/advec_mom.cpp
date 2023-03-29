@@ -106,7 +106,8 @@ void advec_mom(int which_vel, int sweep_number, int dir)
     int fusion_range[] = {x_min, x_max + 1, y_min, y_max + 1};
     ops_par_loop(advec_mom_fusion,
         "advec_mom_fusion", clover_grid, 2, fusion_range,
-        ops_arg_dat(vel1, 1, S2D_00_P10_P20_M10, "double", OPS_RW),
+        ops_arg_dat(work_array1, 1, S2D_00, "double", OPS_WRITE),
+        ops_arg_dat(vel1, 1, S2D_00_P10_P20_M10, "double", OPS_READ),
         ops_arg_dat(work_array7, 1, S2D_00_M10_0M1_M1M1_P1M1_P10, "double", OPS_READ),
         ops_arg_dat(mass_flux_x, 1, S2D_00_P20_M1M1, "double", OPS_READ),
         ops_arg_dat(density1, 1, S2D_00_M10_0M1_M1M1_P1M1_P10, "double", OPS_READ),
@@ -115,7 +116,11 @@ void advec_mom(int which_vel, int sweep_number, int dir)
         ops_arg_gbl(&x_min, 1, "int", OPS_READ),
         ops_arg_gbl(&x_max, 1, "int", OPS_READ));
 
-        //need a work_array for output vel1, then copy back
+    // copy back
+    ops_par_loop(advec_mom_kernel_copy_back, 
+        "advec_mom_kernel_copy_back", clover_grid, 2, fusion_range,
+        ops_arg_dat(work_array1, 1, S2D_00, "double", OPS_READ),
+        ops_arg_dat(vel1, 1, S2D_00, "double", OPS_WRITE));
 
 #else
     //Find staggered mesh mass fluxes, nodal masses and volumes.

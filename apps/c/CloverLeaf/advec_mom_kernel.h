@@ -321,8 +321,7 @@ inline void advec_mom_fusion(
   
 
   // we can remove this if and set the range of the ops_par_loop
-  if(x > x_min && x < x_max + 1) 
-  {
+
       double mass_flux_x_0M1 = mass_flux_x(0, -1);
       double mass_flux_x_00 = mass_flux_x(0, 0);
       double mass_flux_x_1M1 = mass_flux_x(1, -1);
@@ -602,10 +601,9 @@ inline void advec_mom_fusion(
                                     density1_M1M1 * post_vol_M1M1 +
                                     density1_M10 * post_vol_M10));
           }
-      }
 }
 
-inline void advec_mom_fusion_vel_copy(const ACC<double> vel1_temp, ACC<double> vel1) {
+inline void advec_mom_kernel_copy_back(const ACC<double> vel1_temp, ACC<double> vel1) {
     vel1(0, 0) = vel1_temp(0, 0);
 }
 
