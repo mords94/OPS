@@ -99,28 +99,52 @@ void advec_mom(int which_vel, int sweep_number, int dir)
 
   if (dir == 1) {
 
-#define FUSED
-#ifdef FUSED
+#define FUSED1
+#define FUSED_ALL
 
-    // fusion
+#ifdef FUSED1
+
+    //{x_min-1,x_max+2,y_min,y_max+1}; // partial x range partial y range
+    ops_par_loop(advec_mom_kernel_mass_flux_x_and_post_pre_advec_x,"advec_mom_kernel_mass_flux_x_and_post_pre_advec_x", clover_grid, 2, range_partx_party_1,
+                 ops_arg_dat(work_array2/*node_mass_post*/, 1, S2D_00, "double", OPS_WRITE),
+                 ops_arg_dat(work_array3/*node_mass_pre*/, 1, S2D_00, "double", OPS_WRITE),
+                 ops_arg_dat(work_array7, 1, S2D_00_M10_M1M1_0M1, "double", OPS_READ),
+                 ops_arg_dat(density1, 1, S2D_00_M10_M1M1_0M1, "double", OPS_READ),
+                  ops_arg_dat(mass_flux_x, 1, S2D_00_M10_M1M1_0M1_P1M1_P10, "double", OPS_READ));
+
+    int range_plus1xy_minus1x[] = {x_min-1,x_max+1,y_min,y_max+1};
+    ops_par_loop(advec_mom_kernel1_x_nonvector,"advec_mom_kernel1_x", clover_grid, 2, range_plus1xy_minus1x,
+                 ops_arg_dat(work_array1, 1, S2D_00, "double", OPS_READ),
+                 ops_arg_dat(work_array3, 1, S2D_00_P10, "double", OPS_READ),
+                 ops_arg_dat(work_array5, 1, S2D_00, "double", OPS_WRITE),
+                 ops_arg_dat(celldx, 1, S2D_00_P10_M10_STRID2D_X, "double", OPS_READ),
+                 ops_arg_dat(vel1, 1, S2D_00_P10_P20_M10, "double", OPS_READ));
+
+    int range_partx_party_2[] = {x_min,x_max+1,y_min,y_max+1};
+    ops_par_loop(advec_mom_kernel2_x,"advec_mom_kernel2_x", clover_grid, 2, range_partx_party_2,
+                 ops_arg_dat(vel1, 1, S2D_00, "double", OPS_RW),
+                 ops_arg_dat(work_array2, 1, S2D_00, "double", OPS_READ),
+                 ops_arg_dat(work_array3, 1, S2D_00, "double", OPS_READ),
+                 ops_arg_dat(work_array5, 1, S2D_00_M10, "double", OPS_READ));
+
+#elif defined(FUSED_ALL)
+
+
     int fusion_range[] = {x_min, x_max + 1, y_min, y_max + 1};
-    ops_par_loop(advec_mom_fusion,
-        "advec_mom_fusion", clover_grid, 2, fusion_range,
-        ops_arg_dat(work_array1, 1, S2D_00, "double", OPS_WRITE),
-        ops_arg_dat(vel1, 1, S2D_00_P10_P20_M10, "double", OPS_READ),
-        ops_arg_dat(work_array7, 1, S2D_00_M10_0M1_M1M1_P1M1_P10, "double", OPS_READ),
-        ops_arg_dat(mass_flux_x, 1, S2D_00_P20_M1M1, "double", OPS_READ),
-        ops_arg_dat(density1, 1, S2D_00_M10_0M1_M1M1_P1M1_P10, "double", OPS_READ),
-        ops_arg_dat(celldx, 1, S2D_00_P10_M10_STRID2D_X, "double", OPS_READ),
-        ops_arg_idx(),
-        ops_arg_gbl(&x_min, 1, "int", OPS_READ),
-        ops_arg_gbl(&x_max, 1, "int", OPS_READ));
+    ops_par_loop(advec_mom_fusion, "advec_mom_fusion", clover_grid, 2, fusion_range,
+                 ops_arg_dat(work_array1, 1, S2D_00, "double", OPS_WRITE),
+                 ops_arg_dat(vel1, 1, S2D_00_P10_P20_M10, "double", OPS_READ),
+                 ops_arg_dat(work_array7, 1, S2D_00_M10_0M1_M1M1_P1M1_P10, "double", OPS_READ),
+                 ops_arg_dat(mass_flux_x, 1, S2D_00_P20_M1M1, "double", OPS_READ),
+                 ops_arg_dat(density1, 1, S2D_00_M10_0M1_M1M1_P1M1_P10, "double", OPS_READ),
+                 ops_arg_dat(celldx, 1, S2D_00_P10_M10_STRID2D_X, "double", OPS_READ));
 
-    // copy back
-    ops_par_loop(advec_mom_kernel_copy_back, 
-        "advec_mom_kernel_copy_back", clover_grid, 2, fusion_range,
-        ops_arg_dat(work_array1, 1, S2D_00, "double", OPS_READ),
-        ops_arg_dat(vel1, 1, S2D_00, "double", OPS_WRITE));
+
+    ops_par_loop(advec_mom_kernel_copy_back, "advec_mom_kernel_copy_back", clover_grid, 2, fusion_range,
+                 ops_arg_dat(work_array1, 1, S2D_00, "double", OPS_READ),
+                 ops_arg_dat(vel1, 1, S2D_00, "double", OPS_WRITE));
+
+
 
 #else
     //Find staggered mesh mass fluxes, nodal masses and volumes.
